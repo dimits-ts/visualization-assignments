@@ -22,4 +22,33 @@ any(is.na(df$continent))
 
 # Note: GLCM data do not exist for Oceania
 
+# greece compared to continents
+avg_scores <- df %>%
+  group_by(continent) %>%
+  summarise(
+    avg_math = mean(math, na.rm = TRUE),
+    avg_reading = mean(reading, na.rm = TRUE),
+    avg_science = mean(science, na.rm = TRUE),
+    avg_glcm = mean(glcm, na.rm = TRUE)
+  )
+greece_df = df[df$country=="Greece",]
+avg_scores = cbind(list("Greece",
+                       mean(greece_df$math),
+                       mean(greece_df$reading),
+                       mean(greece_df$science),
+                       mean(greece_df$glcm)),
+                  avg_scores)
 
+avg_scores_long <- avg_scores %>%
+  pivot_longer(cols = c(avg_math, avg_reading, avg_science, avg_glcm),
+               names_to = "subject",
+               values_to = "average_score")
+
+ggplot(avg_scores_long, aes(x = continent, y = average_score, fill = subject)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black", width = 0.7) +
+  labs(title = "Average Scores by Continent",
+       x = "Continent",
+       y = "Average Score",
+       fill = "Subject") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
