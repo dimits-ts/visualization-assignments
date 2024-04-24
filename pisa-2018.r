@@ -151,12 +151,13 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
   scale_fill_continuous(low = "thistle2", 
                         high = "darkred", 
                         guide="colorbar") +
-    scale_fill_gradient2(high = "#008080",
+    scale_fill_gradient2(high = "yellow",
                          low = "#964B00",
                          mid="lightgrey",
                          na.value = "grey") +
   expand_limits(x = world_map$long, y = world_map$lat) +
-  labs(title="Difference between female (blue) and male (brown) test scores", fill="Female/Male Difference (%)") +
+  labs(title="Difference between female (yellow) and male (brown) test scores",
+       fill="Female/Male Difference (%)") +
   theme_minimal() +
   theme(panel.border = element_blank(),
         panel.grid.major = element_blank(),
@@ -167,7 +168,61 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
         legend.title = element_blank(),
         legend.position = "right") +
   theme_void()
-  # todo: 
-  #annotate("text", x = 1, y = 1, label = "+% women", hjust = -1.5, vjust = -2.25, size = 4, color = "#964B00") +
-  #annotate("text", x = 1, y = 1, label = "-% men", hjust = -2.5, vjust = 6, size = 4, color = "#008080")
+
+
+# ======== Continents F/M divergence ======== 
+
+gender_continent_df <- overall_df %>%
+  group_by(continent, gender) %>%
+  summarise(
+    avg_math = mean(math, na.rm=T),
+    avg_reading = mean(reading, na.rm=T),
+    avg_science = mean(science, na.rm=T),
+    avg_glcm = mean(glcm, na.rm=T)
+  )
+gender_continent_df <- gender_continent_df[!is.na(gender_continent_df$gender),] 
+
+# Calculate the total scores for each country and gender
+gender_continent_perc_df <- gender_continent_df %>%
+  group_by(continent, gender) %>%
+  summarize(total_math = sum(avg_math, na.rm = TRUE),
+            total_reading = sum(avg_reading, na.rm = TRUE),
+            total_science = sum(avg_science, na.rm = TRUE),
+            total_glcm = sum(avg_glcm, na.rm = TRUE)) %>%
+  ungroup() %>%
+  group_by(continent) %>%
+  mutate(fem_math = sum(ifelse(gender == "Female", total_math, 0), na.rm = TRUE),
+         male_math = sum(ifelse(gender == "Male", total_math, 0), na.rm = TRUE),
+         fem_science = sum(ifelse(gender == "Female", total_science, 0), na.rm = TRUE),
+         male_science = sum(ifelse(gender == "Male", total_science, 0), na.rm = TRUE),
+         fem_reading = sum(ifelse(gender == "Female", total_reading, 0), na.rm = TRUE),
+         male_reading = sum(ifelse(gender == "Male", total_reading, 0), na.rm = TRUE),
+         fem_glcm = sum(ifelse(gender == "Female", total_glcm, 0), na.rm = TRUE),
+         male_glcm = sum(ifelse(gender == "Male", total_glcm, 0), na.rm = TRUE)) %>%
+  summarise(math_perc = (fem_math / (fem_math + male_math)-0.5) * 100,
+            science_perc = (fem_science / (fem_science + male_science)-0.5) * 100,
+            reading_perc = (fem_reading / (fem_reading + male_reading)-0.5) * 100,
+            glcm_perc = (fem_glcm / (fem_glcm + male_glcm)-0.5) * 100)
+# remove duplicates
+gender_continent_df <- gender_continent_df[seq(1, nrow(gender_country_perc_df), 2), ]
+gender_continent_perc_df
+
+names(gender_continent_perc_df) <- c("Continent", "Mathematics", "Reading", "Science", "GLCM")
+
+gender_continent_perc_df_long <- gender_continent_perc_df %>%
+  pivot_longer(cols = c(Mathematics, Reading, Science, GLCM),
+               names_to = "subject",
+               values_to = "average_score")
+
+custom_yticks <- seq(-1, 2, by = 0.5) 
+custom_ylabels <- paste(custom_yticks, "%", sep = "")  # Convert tick positions to labels with percentage symbol
+ggplot(gender_continent_perc_df_long, aes(x = Continent, y = average_score, fill = subject)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black", width = 0.7) +
+  labs(title = "Difference between female (top) and male (bottom) test scores",
+       x = "Continent",
+       y = "Score Difference Ratio (%)",
+       fill = "Subject") +
+  scale_y_continuous(breaks = custom_yticks, labels = custom_ylabels) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
