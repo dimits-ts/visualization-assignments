@@ -4,6 +4,9 @@ library(dplyr)
 library(tidyr)
 library(maps)
 library(sf)
+library(grid)
+library(gridExtra)
+library(forcats)
 
 load("pisa2018.Rdata")
 
@@ -108,6 +111,53 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
   theme_void()
 
 
+# ======== Horizontal barplots for EU grades ========
+
+eu_avg_df <- df[df$continent=="Europe",]  %>%
+  group_by(country) %>%
+  summarise(
+    avg_math = mean(math, na.rm = TRUE),
+    avg_reading = mean(reading, na.rm = TRUE),
+    avg_science = mean(science, na.rm = TRUE),
+    avg_glcm = mean(glcm, na.rm = TRUE)
+  )
+
+# Reshape the data from wide to long format
+eu_avg_df_long <- eu_avg_df %>%
+  pivot_longer(cols = starts_with("avg"), names_to = "subject", values_to = "average_value")
+
+# Create a list to store individual plots
+plot_list <- list()
+subject_name_list <- c("Mathematics", "Reading", "Science", "GLCM")
+i=1
+
+# Loop through each subject and create a separate barplot
+for (subject in unique(eu_avg_df_long$subject)) {
+  # Subset data for the current subject
+  plot_data <- eu_avg_df_long[eu_avg_df_long$subject==subject,]
+  plot_data <- drop_na(plot_data)
+  plot_data <- plot_data[order(plot_data$average_value),]
+  plot_data$country <- fct_reorder(plot_data$country, plot_data$average_value)
+  
+  
+  country_colors <- ifelse(plot_data$country == "Greece", "red", "steelblue")
+  p <- ggplot(plot_data, aes(x = average_value, y = country, fill=country)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(title = paste(subject_name_list[i])) +
+  scale_fill_manual(values = country_colors) +
+  theme_minimal() +
+  guides(fill = FALSE) +
+  xlab(NULL) + 
+  ylab(NULL)
+  
+  plot_list[[subject]] <- p
+  i <- i + 1
+}
+
+grid.arrange(grobs = plot_list, 
+             ncol = 2, 
+             nrow = 2, 
+             top=textGrob("EU Average Scores", gp=gpar(fontsize=20,font=3)))
 
 # ======== Map on F/M divergence ======== 
 
