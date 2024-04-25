@@ -79,7 +79,7 @@ plot_list <- list()
 i=1
 
 for (subject in unique(greece_global_df$subject)) {
-  temp_subject_df <- greece_global_df[gender_grades_df$subject == subject,]
+  temp_subject_df <- greece_global_df[greece_global_df$subject == subject,]
   p <- ggplot(df, aes(x = math, fill = country != "Greece")) +
     geom_density(alpha = 0.7) +
     labs(x=NULL, y=NULL, title=SUBJECT_NAME_LIST[i]) +
@@ -169,9 +169,6 @@ Total$avg_score <- avg_country_scores$avg_score[match(Total$iso_code, avg_countr
 
 ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) + 
   geom_polygon(colour = "white") +
-  scale_fill_continuous(low = "thistle2", 
-                        high = "darkred", 
-                        guide="colorbar") +
   scale_fill_gradient(low = "black", high = "lightgreen", na.value = "grey") +
   expand_limits(x = world_map$long, y = world_map$lat) +
   labs(fill="Average score (4 tests)") +
@@ -339,9 +336,6 @@ Total$avg_score <- gender_country_perc_df$female_to_male_perc[
 
 ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) + 
   geom_polygon(colour = "white") +
-  scale_fill_continuous(low = "thistle2", 
-                        high = "darkred", 
-                        guide="colorbar") +
     scale_fill_gradient2(high = FEMALE_COLOR,
                          low = MALE_COLOR,
                          mid="lightgrey",
@@ -398,15 +392,15 @@ gender_continent_perc_df <- gender_continent_df %>%
             reading_perc = (fem_reading / (fem_reading + male_reading)-0.5) * 100,
             glcm_perc = (fem_glcm / (fem_glcm + male_glcm)-0.5) * 100)
 # remove duplicates
-gender_continent_perc_df <- gender_continent_df[seq(1, nrow(gender_country_perc_df), 2), ]
-gender_continent_perc_df
+gender_continent_perc_df <- gender_continent_perc_df[seq(1, nrow(gender_country_perc_df), 2), ]
+gender_continent_perc_df <- gender_continent_perc_df[1:5,]
 
 names(gender_continent_perc_df) <- c("Continent", "Mathematics", "Reading", "Science", "GLCM")
 
 gender_continent_perc_df_long <- gender_continent_perc_df %>%
-  pivot_longer(cols = c(Mathematics, Reading, Science, GLCM),
-               names_to = "subject",
-               values_to = "average_score")
+                                      pivot_longer(cols = c(Mathematics, Reading, Science, GLCM),
+                                                   names_to = "subject",
+                                                   values_to = "average_score")
 
 custom_yticks <- seq(-1, 2, by = 0.5) 
 custom_ylabels <- paste(custom_yticks, "%", sep = "")  # Convert tick positions to labels with percentage symbol
