@@ -227,10 +227,10 @@ grid.arrange(grobs = plot_list,
 enhanced_avg_scores_df <- merge(avg_country_scores, extra_data_df, by="iso_code")
 
 ggplot(enhanced_avg_scores_df, aes(x=gdp_percap, y=avg_score, size=population, color=continent)) +
-  geom_point(data = subset(enhanced_avg_scores_df, country != "Greece"), alpha = 0.6) +
+  geom_point(data = enhanced_avg_scores_df, alpha = 0.6) +
   geom_text(data = subset(enhanced_avg_scores_df, country == "Greece"),
             aes(label = "Greece"), 
-            nudge_y=8,
+            nudge_y=3,
             size = 4, 
             fontface = "bold",
             show.legend = F) +
@@ -327,7 +327,7 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
                          na.value = "grey") +
   expand_limits(x = world_map$long, y = world_map$lat) +
   labs(title="Difference between female (yellow) and male (brown) test scores",
-       fill="Female/Male Difference (%)") +
+       fill="Female/Male score diff (%)") +
   theme_minimal() +
   theme(panel.border = element_blank(),
         panel.grid.major = element_blank(),
@@ -397,5 +397,29 @@ ggplot(gender_continent_perc_df_long, aes(x = Continent, y = average_score, fill
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
+# ======== Pop, GDP, M/F diff plot ======== 
+enhanced_gender_country_perc_df <- merge(gender_country_perc_df, extra_data_df, by="iso_code")
 
+ggplot(enhanced_gender_country_perc_df, aes(x=gdp_percap, y=female_to_male_perc, size=population, color=continent)) +
+  geom_point(data = enhanced_gender_country_perc_df, alpha = 0.6) +
+  geom_text(data = subset(enhanced_gender_country_perc_df, country == "Greece"),
+            aes(label = "Greece"),
+            nudge_y=0.1,
+            size = 4, 
+            fontface = "bold",
+            show.legend = F) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
+  annotate("text", y = 0.05, x = max(enhanced_gender_country_perc_df$gdp_percap)*4/5,
+           label = "Gender Equality", color = "red", size = 4, fontface = "bold")  +
+  scale_color_manual(values=CONTINENT_COLORS) +
+  scale_size(range = c(2, 20), guide=F) +
+  labs(x = "GDP per Capita (U.S. $ 2024)",
+       y = "Female/Male score diff (%)", 
+       title="Gender gap in average scores\n(Higher: Female-dominated scores)",
+       color="Continent") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),  
+        legend.text = element_text(size = 10),   
+        legend.key.size = unit(1.5, "cm")) +
+  guides(color = guide_legend(override.aes = list(size = 10)))  
 
