@@ -13,9 +13,10 @@ OTHER_COUNTRIES_COLOR = "steelblue"
 FEMALE_COLOR = "darkgoldenrod1"
 MALE_COLOR = "#964B00"
 
-subject_name_list <- c("Mathematics", "Reading", "Science", "GLCM")
 
-load("pisa2018.Rdata")
+SUBJECT_NAME_LIST <- c("Mathematics", "Reading", "Science", "GLCM")
+
+load("data/pisa2018.Rdata")
 
 # select and rename columns
 df = subset(newdata, select=c("CNT", "MATH", "READ", "SCIE", "GLCM", "ST004D01T"))
@@ -51,7 +52,7 @@ for (subject in unique(greece_global_df$subject)) {
   temp_subject_df <- greece_global_df[gender_grades_df$subject == subject,]
   p <- ggplot(df, aes(x = math, fill = country == "Greece")) +
     geom_density(alpha = 0.7) +
-    labs(x = "score", title = subject_name_list[i]) +
+    labs(x = "score", title = SUBJECT_NAME_LIST[i]) +
     scale_fill_manual(values = c(OTHER_COUNTRIES_COLOR, GREECE_COLOR), labels = c("Other Countries", "Greece")) +
     theme_minimal() +
     theme(legend.title = element_blank(), 
@@ -184,7 +185,7 @@ for (subject in unique(eu_avg_df_long$subject)) {
   country_colors <- ifelse(plot_data$country == "Greece", "red", "steelblue")
   p <- ggplot(plot_data, aes(x = average_value, y = country, fill=country)) +
   geom_bar(stat = "identity", position = "dodge", color = "black") +
-  labs(title = paste(subject_name_list[i])) +
+  labs(title = paste(SUBJECT_NAME_LIST[i])) +
   scale_fill_manual(values = country_colors) +
   theme_minimal() +
   guides(fill = FALSE) +
@@ -215,7 +216,7 @@ for (subject in unique(gender_grades_df$subject)) {
   temp_subject_df <- gender_grades_df[gender_grades_df$subject == subject,]
   p <- ggplot(temp_subject_df, aes(x = score, color = gender, fill = gender)) +
       geom_density(alpha = 0.5) +  # Add transparency
-      labs(x = "score", title = subject_name_list[i]) +
+      labs(x = "score", title = SUBJECT_NAME_LIST[i]) +
       scale_color_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +  
       scale_fill_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +
       theme_minimal() +
@@ -230,6 +231,45 @@ grid.arrange(grobs = plot_list,
              ncol = 2, 
              nrow = 2, 
              top=textGrob("Global scores by gender", gp=gpar(fontsize=20,font=3)))
+
+
+# ======== Pop, GDP, avg_score plot ======== 
+
+pop_df <- read.csv("data/pops.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
+names(pop_df) <- c("iso_code", "population")
+
+gdp_percap_df <- read.csv("data/gdp_percap.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
+names(gdp_percap_df) <- c("iso_code", "gdp_percap")
+
+enhanced_avg_scores_df <- merge(avg_country_scores, pop_df, by="iso_code")
+enhanced_avg_scores_df <- merge(enhanced_avg_scores_df, gdp_percap_df, by="iso_code")
+enhanced_avg_scores_df$continent = countrycode(sourcevar = enhanced_avg_scores_df[,"iso_code"],
+                           origin = "iso3c",
+                           destination="continent")
+
+CONTINENT_COLORS =  c("Asia" = "orange", "Europe" = "blue", "Africa" = "red", "Americas" = "purple", "Oceania"= "green", "red"= "red")
+#TODO: Figure out if we can show where greece is 
+ggplot(enhanced_avg_scores_df, aes(x=gdp_percap, y=avg_score, size=population, color=continent)) +
+  geom_point(data = subset(enhanced_avg_scores_df, country != "Greece"), alpha = 0.6) +
+  geom_text(data = subset(enhanced_avg_scores_df, country == "Greece"),
+            aes(label = "Greece"), 
+            nudge_y=8,
+            size = 4, 
+            fontface = "bold",
+            show.legend = F) +
+  #geom_point(data = subset(enhanced_avg_scores_df, country == "Greece"), 
+             #aes(color = GREECE_COLOR)) +
+  scale_color_manual(values=CONTINENT_COLORS) +
+  scale_size(range = c(2, 20), guide=F) +
+  labs(x = "GDP per Capita (U.S. $ 2024)",
+       y = "Average Score (all tests)", 
+       title="Average Scores by GDP per capita and population",
+       color="Continent") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),  
+        legend.text = element_text(size = 10),   
+        legend.key.size = unit(1.5, "cm")) +
+  guides(color = guide_legend(override.aes = list(size = 10)))  
 
 # ======== Map on F/M divergence ======== 
 
