@@ -8,14 +8,17 @@ library(grid)
 library(gridExtra)
 library(forcats)
 
+
 GREECE_COLOR = "red"
 OTHER_COUNTRIES_COLOR = "steelblue"
 FEMALE_COLOR = "darkgoldenrod1"
 MALE_COLOR = "#964B00"
-
+CONTINENT_COLORS =  c("Asia" = "orange", "Europe" = "blue", "Africa" = "red", "Americas" = "purple", "Oceania"= "green", "red"= "red")
 
 SUBJECT_NAME_LIST <- c("Mathematics", "Reading", "Science", "GLCM")
 
+
+# Import pisa data
 load("data/pisa2018.Rdata")
 
 # select and rename columns
@@ -35,6 +38,23 @@ df[df$country == "Kosovo", ]$continent = "Europe"
 df$continent = as.factor(df$continent)
 levels(df$continent)
 any(is.na(df$continent))
+
+
+# Import extra data
+# Data sources:
+# https://data.worldbank.org/indicator/NY.GDP.PCAP.CD?end=2018&start=2018
+# https://data.worldbank.org/indicator/SP.POP.TOTL?end=
+
+pop_df <- read.csv("data/pops.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
+names(pop_df) <- c("iso_code", "population")
+
+gdp_percap_df <- read.csv("data/gdp_percap.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
+names(gdp_percap_df) <- c("iso_code", "gdp_percap")
+
+extra_data_df <- merge(pop_df, gdp_percap_df, by="iso_code")
+extra_data_df$continent = countrycode(sourcevar = extra_data_df[,"iso_code"],
+                        origin = "iso3c",
+                        destination="continent")
 
 
 # ======== Greece compared to all others ======== 
@@ -202,6 +222,32 @@ grid.arrange(grobs = plot_list,
              top=textGrob("European Average Scores", gp=gpar(fontsize=20,font=3)))
 
 
+# ======== Pop, GDP, avg_score plot ======== 
+
+enhanced_avg_scores_df <- merge(avg_country_scores, extra_data_df, by="iso_code")
+
+ggplot(enhanced_avg_scores_df, aes(x=gdp_percap, y=avg_score, size=population, color=continent)) +
+  geom_point(data = subset(enhanced_avg_scores_df, country != "Greece"), alpha = 0.6) +
+  geom_text(data = subset(enhanced_avg_scores_df, country == "Greece"),
+            aes(label = "Greece"), 
+            nudge_y=8,
+            size = 4, 
+            fontface = "bold",
+            show.legend = F) +
+  scale_color_manual(values=CONTINENT_COLORS) +
+  scale_size(range = c(2, 20), guide=F) +
+  labs(x = "GDP per Capita (U.S. $ 2024)",
+       y = "Average Score (all tests)", 
+       title="Average Scores by GDP per capita and population",
+       color="Continent") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 12),  
+        legend.text = element_text(size = 10),   
+        legend.key.size = unit(1.5, "cm")) +
+  guides(color = guide_legend(override.aes = list(size = 10)))  
+
+
+
 # ======== F/M Distribution ======== 
 
 gender_grades_df <- drop_na(df) %>%
@@ -232,44 +278,6 @@ grid.arrange(grobs = plot_list,
              nrow = 2, 
              top=textGrob("Global scores by gender", gp=gpar(fontsize=20,font=3)))
 
-
-# ======== Pop, GDP, avg_score plot ======== 
-
-pop_df <- read.csv("data/pops.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
-names(pop_df) <- c("iso_code", "population")
-
-gdp_percap_df <- read.csv("data/gdp_percap.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
-names(gdp_percap_df) <- c("iso_code", "gdp_percap")
-
-enhanced_avg_scores_df <- merge(avg_country_scores, pop_df, by="iso_code")
-enhanced_avg_scores_df <- merge(enhanced_avg_scores_df, gdp_percap_df, by="iso_code")
-enhanced_avg_scores_df$continent = countrycode(sourcevar = enhanced_avg_scores_df[,"iso_code"],
-                           origin = "iso3c",
-                           destination="continent")
-
-CONTINENT_COLORS =  c("Asia" = "orange", "Europe" = "blue", "Africa" = "red", "Americas" = "purple", "Oceania"= "green", "red"= "red")
-#TODO: Figure out if we can show where greece is 
-ggplot(enhanced_avg_scores_df, aes(x=gdp_percap, y=avg_score, size=population, color=continent)) +
-  geom_point(data = subset(enhanced_avg_scores_df, country != "Greece"), alpha = 0.6) +
-  geom_text(data = subset(enhanced_avg_scores_df, country == "Greece"),
-            aes(label = "Greece"), 
-            nudge_y=8,
-            size = 4, 
-            fontface = "bold",
-            show.legend = F) +
-  #geom_point(data = subset(enhanced_avg_scores_df, country == "Greece"), 
-             #aes(color = GREECE_COLOR)) +
-  scale_color_manual(values=CONTINENT_COLORS) +
-  scale_size(range = c(2, 20), guide=F) +
-  labs(x = "GDP per Capita (U.S. $ 2024)",
-       y = "Average Score (all tests)", 
-       title="Average Scores by GDP per capita and population",
-       color="Continent") +
-  theme_minimal() +
-  theme(legend.title = element_text(size = 12),  
-        legend.text = element_text(size = 10),   
-        legend.key.size = unit(1.5, "cm")) +
-  guides(color = guide_legend(override.aes = list(size = 10)))  
 
 # ======== Map on F/M divergence ======== 
 
@@ -387,4 +395,7 @@ ggplot(gender_continent_perc_df_long, aes(x = Continent, y = average_score, fill
   scale_y_continuous(breaks = custom_yticks, labels = custom_ylabels) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
 
