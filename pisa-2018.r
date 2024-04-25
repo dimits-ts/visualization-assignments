@@ -9,6 +9,17 @@ library(gridExtra)
 library(forcats)
 
 
+# ===== HELPER FUNCTIONS FOR SAVING PLOTS AND TABLES =====
+
+RESOURCE_PATH = "output"
+
+# Utility function to get a relative file path (including file extension)
+# from a file name.
+filepath_png <- function(name) {
+  return(file.path(RESOURCE_PATH, paste(name, ".png", sep = "")))
+}
+
+
 GREECE_COLOR = "red"
 OTHER_COUNTRIES_COLOR = "steelblue"
 FEMALE_COLOR = "darkgoldenrod1"
@@ -67,13 +78,12 @@ greece_global_df <- drop_na(df) %>%
 plot_list <- list()
 i=1
 
-#TODO: remove density ticks?
 for (subject in unique(greece_global_df$subject)) {
   temp_subject_df <- greece_global_df[gender_grades_df$subject == subject,]
-  p <- ggplot(df, aes(x = math, fill = country == "Greece")) +
+  p <- ggplot(df, aes(x = math, fill = country != "Greece")) +
     geom_density(alpha = 0.7) +
-    labs(x = "score", title = SUBJECT_NAME_LIST[i]) +
-    scale_fill_manual(values = c(OTHER_COUNTRIES_COLOR, GREECE_COLOR), labels = c("Other Countries", "Greece")) +
+    labs(x=NULL, y=NULL, title=SUBJECT_NAME_LIST[i]) +
+    scale_fill_manual(values=c(GREECE_COLOR, OTHER_COUNTRIES_COLOR), labels = c("Greece", "Other Countries")) +
     theme_minimal() +
     theme(legend.title = element_blank(), 
           axis.title.y = element_text(vjust = 1)) 
@@ -82,10 +92,13 @@ for (subject in unique(greece_global_df$subject)) {
   i <- i + 1
 }
 
-grid.arrange(grobs = plot_list, 
+grid_plot <- grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
-             top=textGrob("Greece vs global scores", gp=gpar(fontsize=20,font=3)))
+             top=textGrob("Greek vs global scores", gp=gpar(fontsize=20,font=3)),
+             bottom=textGrob("Average Score"),
+             left="Density")
+ggsave(filename=filepath_png("greek_global"), plot=grid_plot)
 
 
 # ======== Greece compared to continents ======== 
@@ -127,7 +140,7 @@ ggplot(avg_scores_long, aes(x = Continent, y = average_score, fill = subject)) +
     # Make the first label bold
     #ifelse(x == unique(avg_scores_long$continent)[1], paste0("<b>", x, "</b>"), x)
   #}
-
+ggsave(filename=filepath_png("greece_continents"))
 
 # ======== Map on average score ======== 
 
@@ -173,6 +186,8 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
         legend.position = "right") +
   theme_void()
 
+ggsave(filename=filepath_png("avg_scores_world"))
+
 
 # ======== Horizontal barplots for EU grades ========
 
@@ -216,11 +231,13 @@ for (subject in unique(eu_avg_df_long$subject)) {
   i <- i + 1
 }
 
-grid.arrange(grobs = plot_list, 
+grid_plot <- grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
-             top=textGrob("European Average Scores", gp=gpar(fontsize=20,font=3)))
+             top=textGrob("European Average Scores", gp=gpar(fontsize=20,font=3)),
+             bottom=textGrob("Average Score"))
 
+ggsave(filename=filepath_png("avg_eu"), plot=grid_plot)
 
 # ======== Pop, GDP, avg_score plot ======== 
 
@@ -246,7 +263,7 @@ ggplot(enhanced_avg_scores_df, aes(x=gdp_percap, y=avg_score, size=population, c
         legend.key.size = unit(1.5, "cm")) +
   guides(color = guide_legend(override.aes = list(size = 10)))  
 
-
+ggsave(filename=filepath_png("avg_bubble"))
 
 # ======== F/M Distribution ======== 
 
@@ -257,12 +274,12 @@ gender_grades_df <- drop_na(df) %>%
 
 plot_list <- list()
 i=1
-#TODO: remove density ticks?
+
 for (subject in unique(gender_grades_df$subject)) {
   temp_subject_df <- gender_grades_df[gender_grades_df$subject == subject,]
   p <- ggplot(temp_subject_df, aes(x = score, color = gender, fill = gender)) +
       geom_density(alpha = 0.5) +  # Add transparency
-      labs(x = "score", title = SUBJECT_NAME_LIST[i]) +
+      labs(x=NULL, y=NULL, title = SUBJECT_NAME_LIST[i]) +
       scale_color_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +  
       scale_fill_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +
       theme_minimal() +
@@ -273,10 +290,14 @@ for (subject in unique(gender_grades_df$subject)) {
   i <- i + 1
 }
 
-grid.arrange(grobs = plot_list, 
+grid_plot <- grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
-             top=textGrob("Global scores by gender", gp=gpar(fontsize=20,font=3)))
+             top=textGrob("Global scores by gender", gp=gpar(fontsize=20,font=3)),
+             bottom=textGrob("Average Score"),
+             left="Density")
+
+ggsave(filename=filepath_png("gender_distplot"), plot=grid_plot)
 
 
 # ======== Map on F/M divergence ======== 
@@ -339,6 +360,9 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
         legend.position = "right") +
   theme_void()
 
+ggsave(filename=filepath_png("gender_world_map"))
+
+
 
 # ======== Continents F/M divergence ======== 
 
@@ -396,6 +420,9 @@ ggplot(gender_continent_perc_df_long, aes(x = Continent, y = average_score, fill
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+ggsave(filename=filepath_png("gender_continents"))
+
+
 
 # ======== Pop, GDP, M/F diff plot ======== 
 enhanced_gender_country_perc_df <- merge(gender_country_perc_df, extra_data_df, by="iso_code")
@@ -423,13 +450,19 @@ ggplot(enhanced_gender_country_perc_df, aes(x=gdp_percap, y=female_to_male_perc,
         legend.key.size = unit(1.5, "cm")) +
   guides(color = guide_legend(override.aes = list(size = 10)))  
 
+ggsave(filename=filepath_png("gender_bubble"))
+
+
 
 # ======== GDP, M/F diff plot for all subjects ======== 
 
 gender_country_df$iso_code <-  countrycode(sourcevar = gender_country_df$country,
                             origin = "country.name",
                             destination = "iso3c")
-enhanced_gender_country_df <- merge(gender_country_df, extra_data_df, by="iso_code")[,c("avg_math", "avg_reading", "avg_science", "avg_glcm", "gender", "gdp_percap")]
+enhanced_gender_country_df <- merge(gender_country_df,
+                                    extra_data_df, 
+                                    by="iso_code"
+                                    )[,c("avg_math", "avg_reading", "avg_science", "avg_glcm", "gender", "gdp_percap")]
 
 enhanced_gender_country_df <- drop_na(enhanced_gender_country_df) %>%
                                 pivot_longer(cols = c(avg_math, avg_reading, avg_science, avg_glcm),
@@ -438,10 +471,13 @@ enhanced_gender_country_df <- drop_na(enhanced_gender_country_df) %>%
 plot_list <- list()
 i=1
 for (subject in unique(enhanced_gender_country_df$subject)) {
+  custom_yticks <- seq(-1, 2, by = 0.5) 
+  custom_ylabels <- paste(custom_yticks, "%", sep = "")  # Convert tick positions to labels with percentage symbol
    p <- ggplot(data = enhanced_gender_country_df[enhanced_gender_country_df$subject==subject,], 
          aes(x = gdp_percap, y = score, color=gender, size=10)) +
         geom_point() +
         scale_color_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +
+        scale_y_continuous(breaks = custom_yticks, labels = custom_ylabels) +
         labs(x=NULL, y=NULL, title = SUBJECT_NAME_LIST[i], color=NULL) +
         theme_minimal() +
         theme(legend.text = element_text(size = 10),   
@@ -452,11 +488,14 @@ for (subject in unique(enhanced_gender_country_df$subject)) {
   i <- i + 1
 }
 
-grid.arrange(grobs = plot_list, 
+grid_plot <- grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
              top=textGrob("Country average scores by gender and GDP per capita"),
              bottom=textGrob("GDP per Capita (U.S. $ 2024)"),
              left="Average Score")
+
+ggsave(filename=filepath_png("gender_scatterplot"), plot=grid_plot)
+
 
              
