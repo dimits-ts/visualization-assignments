@@ -8,6 +8,10 @@ library(grid)
 library(gridExtra)
 library(forcats)
 
+
+FEMALE_COLOR = "darkgoldenrod1"
+MALE_COLOR = "#964B00"
+
 load("pisa2018.Rdata")
 
 # select and rename columns
@@ -157,7 +161,38 @@ for (subject in unique(eu_avg_df_long$subject)) {
 grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
-             top=textGrob("EU Average Scores", gp=gpar(fontsize=20,font=3)))
+             top=textGrob("European Average Scores", gp=gpar(fontsize=20,font=3)))
+
+
+# ======== F/M Distribution ======== 
+
+gender_grades_df <- drop_na(df) %>%
+                    pivot_longer(cols = c(math, reading, science, glcm),
+                                 names_to = "subject", 
+                                 values_to = "score")
+
+plot_list <- list()
+i=1
+#TODO: remove density ticks?
+for (subject in unique(gender_grades_df$subject)) {
+  temp_subject_df <- gender_grades_df[gender_grades_df$subject == subject,]
+  p <- ggplot(temp_subject_df, aes(x = score, color = gender, fill = gender)) +
+      geom_density(alpha = 0.5) +  # Add transparency
+      labs(x = "score", title = subject_name_list[i]) +
+      scale_color_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +  
+      scale_fill_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +
+      theme_minimal() +
+      theme(legend.title = element_blank(), 
+            axis.title.y = element_text(vjust = 1)) 
+  
+  plot_list[[subject]] <- p
+  i <- i + 1
+}
+
+grid.arrange(grobs = plot_list, 
+             ncol = 2, 
+             nrow = 2, 
+             top=textGrob("Global scores by gender", gp=gpar(fontsize=20,font=3)))
 
 # ======== Map on F/M divergence ======== 
 
@@ -201,8 +236,8 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
   scale_fill_continuous(low = "thistle2", 
                         high = "darkred", 
                         guide="colorbar") +
-    scale_fill_gradient2(high = "yellow",
-                         low = "#964B00",
+    scale_fill_gradient2(high = FEMALE_COLOR,
+                         low = MALE_COLOR,
                          mid="lightgrey",
                          na.value = "grey") +
   expand_limits(x = world_map$long, y = world_map$lat) +
