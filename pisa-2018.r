@@ -8,9 +8,12 @@ library(grid)
 library(gridExtra)
 library(forcats)
 
-
+GREECE_COLOR = "red"
+OTHER_COUNTRIES_COLOR = "steelblue"
 FEMALE_COLOR = "darkgoldenrod1"
 MALE_COLOR = "#964B00"
+
+subject_name_list <- c("Mathematics", "Reading", "Science", "GLCM")
 
 load("pisa2018.Rdata")
 
@@ -18,20 +21,55 @@ load("pisa2018.Rdata")
 df = subset(newdata, select=c("CNT", "MATH", "READ", "SCIE", "GLCM", "ST004D01T"))
 names(df) = c("country", "math", "reading", "science", "glcm", "gender")
 
+# add russian regions to russia
+df[df$country == "Moscow Region (RUS)", ]$country = "Russian Federation"
+df[df$country == "Tatarstan (RUS)", ]$country = "Russian Federation"
+
+
 # add continent information
 df$continent = countrycode(sourcevar = df[,"country"],
                            origin = "country.name",
                            destination="continent")
 df[df$country == "Kosovo", ]$continent = "Europe"
-df[df$country == "Moscow Region (RUS)", ]$continent = "Europe"
-df[df$country == "Tatarstan (RUS)", ]$continent = "Asia"
 df$continent = as.factor(df$continent)
 levels(df$continent)
 any(is.na(df$continent))
 
-# Note: GLCM data do not exist for Oceania
+
+# ======== Greece compared to all others ======== 
+
+greece_global_df <- drop_na(df) %>%
+                    pivot_longer(cols = c(math, reading, science, glcm),
+                                 names_to = "subject", 
+                                 values_to = "score")
+
+plot_list <- list()
+i=1
+
+#TODO: remove density ticks?
+for (subject in unique(greece_global_df$subject)) {
+  temp_subject_df <- greece_global_df[gender_grades_df$subject == subject,]
+  p <- ggplot(df, aes(x = math, fill = country == "Greece")) +
+    geom_density(alpha = 0.7) +
+    labs(x = "score", title = subject_name_list[i]) +
+    scale_fill_manual(values = c(OTHER_COUNTRIES_COLOR, GREECE_COLOR), labels = c("Other Countries", "Greece")) +
+    theme_minimal() +
+    theme(legend.title = element_blank(), 
+          axis.title.y = element_text(vjust = 1)) 
+  
+  plot_list[[subject]] <- p
+  i <- i + 1
+}
+
+grid.arrange(grobs = plot_list, 
+             ncol = 2, 
+             nrow = 2, 
+             top=textGrob("Greece vs global scores", gp=gpar(fontsize=20,font=3)))
+
 
 # ======== Greece compared to continents ======== 
+
+# Note: GLCM data do not exist for Oceania
 
 avg_scores <- df %>%
   group_by(continent) %>%
@@ -132,7 +170,6 @@ eu_avg_df_long <- eu_avg_df %>%
 
 # Create a list to store individual plots
 plot_list <- list()
-subject_name_list <- c("Mathematics", "Reading", "Science", "GLCM")
 i=1
 
 # Loop through each subject and create a separate barplot
