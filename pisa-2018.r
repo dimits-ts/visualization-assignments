@@ -374,7 +374,7 @@ gender_continent_perc_df <- gender_continent_df %>%
             reading_perc = (fem_reading / (fem_reading + male_reading)-0.5) * 100,
             glcm_perc = (fem_glcm / (fem_glcm + male_glcm)-0.5) * 100)
 # remove duplicates
-gender_continent_df <- gender_continent_df[seq(1, nrow(gender_country_perc_df), 2), ]
+gender_continent_perc_df <- gender_continent_df[seq(1, nrow(gender_country_perc_df), 2), ]
 gender_continent_perc_df
 
 names(gender_continent_perc_df) <- c("Continent", "Mathematics", "Reading", "Science", "GLCM")
@@ -423,3 +423,40 @@ ggplot(enhanced_gender_country_perc_df, aes(x=gdp_percap, y=female_to_male_perc,
         legend.key.size = unit(1.5, "cm")) +
   guides(color = guide_legend(override.aes = list(size = 10)))  
 
+
+# ======== GDP, M/F diff plot for all subjects ======== 
+
+gender_country_df$iso_code <-  countrycode(sourcevar = gender_country_df$country,
+                            origin = "country.name",
+                            destination = "iso3c")
+enhanced_gender_country_df <- merge(gender_country_df, extra_data_df, by="iso_code")[,c("avg_math", "avg_reading", "avg_science", "avg_glcm", "gender", "gdp_percap")]
+
+enhanced_gender_country_df <- drop_na(enhanced_gender_country_df) %>%
+                                pivot_longer(cols = c(avg_math, avg_reading, avg_science, avg_glcm),
+                                             names_to = "subject", 
+                                             values_to = "score")
+plot_list <- list()
+i=1
+for (subject in unique(enhanced_gender_country_df$subject)) {
+   p <- ggplot(data = enhanced_gender_country_df[enhanced_gender_country_df$subject==subject,], 
+         aes(x = gdp_percap, y = score, color=gender, size=10)) +
+        geom_point() +
+        scale_color_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +
+        labs(x=NULL, y=NULL, title = SUBJECT_NAME_LIST[i], color=NULL) +
+        theme_minimal() +
+        theme(legend.text = element_text(size = 10),   
+              legend.key.size = unit(1.5, "cm")) +
+        guides(color = guide_legend(override.aes = list(size = 10)), size = "none")  
+  
+  plot_list[[subject]] <- p
+  i <- i + 1
+}
+
+grid.arrange(grobs = plot_list, 
+             ncol = 2, 
+             nrow = 2, 
+             top=textGrob("Country average scores by gender and GDP per capita"),
+             bottom=textGrob("GDP per Capita (U.S. $ 2024)"),
+             left="Average Score")
+
+             
