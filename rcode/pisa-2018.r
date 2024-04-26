@@ -27,7 +27,7 @@ MALE_COLOR = "#964B00"
 CONTINENT_COLORS =  c("Asia" = "orange", "Europe" = "blue", "Africa" = "red", "Americas" = "purple", "Oceania"= "green", "red"= "red")
 
 SUBJECT_NAME_LIST <- c("Mathematics", "Reading", "Science", "GLCM")
-
+TITLE_SIZE = 15
 
 # Import pisa data
 load("data/pisa2018.Rdata")
@@ -49,7 +49,6 @@ df[df$country == "Kosovo", ]$continent = "Europe"
 df$continent = as.factor(df$continent)
 levels(df$continent)
 any(is.na(df$continent))
-
 
 # Import extra data
 # Data sources:
@@ -104,8 +103,8 @@ ggsave(filename=filepath_png("greek_global"), plot=grid_plot)
 # ======== Greece compared to continents ======== 
 
 # Note: GLCM data do not exist for Oceania
-
-avg_scores <- df %>%
+# Note: Remove Africa since it is represented by only one country
+avg_scores <- df[df$continent != "Africa",] %>%
   group_by(continent) %>%
   summarise(
     avg_math = mean(math, na.rm = TRUE),
@@ -114,7 +113,7 @@ avg_scores <- df %>%
     avg_glcm = mean(glcm, na.rm = TRUE)
   )
 greece_df = df[df$country=="Greece",]
-avg_scores = rbind(data.frame(continent="Greece",
+avg_scores = rbind(data.frame(continent="<Greece>",
                               avg_math=mean(greece_df$math),
                               avg_reading=mean(greece_df$reading),
                               avg_science=mean(greece_df$science),
@@ -135,11 +134,7 @@ ggplot(avg_scores_long, aes(x = Continent, y = average_score, fill = subject)) +
        fill = "Subject") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  #+
-  #scale_x_discrete(labels = function(x) {
-    # Make the first label bold
-    #ifelse(x == unique(avg_scores_long$continent)[1], paste0("<b>", x, "</b>"), x)
-  #}
+
 ggsave(filename=filepath_png("greece_continents"))
 
 # ======== Map on average score ======== 
@@ -252,11 +247,12 @@ ggplot(enhanced_avg_scores_df, aes(x=gdp_percap, y=avg_score, size=population, c
   scale_size(range = c(2, 20), guide=F) +
   labs(x = "GDP per Capita (U.S. $ 2024)",
        y = "Average Score (all tests)", 
-       title="Average Scores by GDP per capita and population",
+       #title="Average Scores by GDP per capita and population",
        color="Continent") +
   theme_minimal() +
-  theme(legend.title = element_text(size = 12),  
-        legend.text = element_text(size = 10),   
+  theme(axis.title=element_text(size=TITLE_SIZE),
+        legend.title = element_text(size = TITLE_SIZE),  
+        legend.text = element_text(size = TITLE_SIZE),   
         legend.key.size = unit(1.5, "cm")) +
   guides(color = guide_legend(override.aes = list(size = 10)))  
 
@@ -356,6 +352,9 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
 
 ggsave(filename=filepath_png("gender_world_map"))
 
+# Check interesting outlier
+sum(df$country=="Saudi Arabia" & df$gender=="Female")
+sum(df$country=="Saudi Arabia" & df$gender=="Male")
 
 
 # ======== Continents F/M divergence ======== 
@@ -436,11 +435,13 @@ ggplot(enhanced_gender_country_perc_df, aes(x=gdp_percap, y=female_to_male_perc,
   scale_size(range = c(2, 20), guide=F) +
   labs(x = "GDP per Capita (U.S. $ 2024)",
        y = "Female/Male score diff (%)", 
-       title="Gender gap in average scores\n(Higher: Female-dominated scores)",
+       title="Gender gap in average scores (Higher: Female-dominated scores)",
        color="Continent") +
   theme_minimal() +
-  theme(legend.title = element_text(size = 12),  
-        legend.text = element_text(size = 10),   
+  theme(plot.title=element_text(TITLE_SIZE*1.5),
+        axis.title=element_text(size=TITLE_SIZE),
+        legend.title = element_text(size = TITLE_SIZE),  
+        legend.text = element_text(size = TITLE_SIZE), 
         legend.key.size = unit(1.5, "cm")) +
   guides(color = guide_legend(override.aes = list(size = 10)))  
 
@@ -465,17 +466,13 @@ enhanced_gender_country_df <- drop_na(enhanced_gender_country_df) %>%
 plot_list <- list()
 i=1
 for (subject in unique(enhanced_gender_country_df$subject)) {
-  custom_yticks <- seq(-1, 2, by = 0.5) 
-  custom_ylabels <- paste(custom_yticks, "%", sep = "")  # Convert tick positions to labels with percentage symbol
    p <- ggplot(data = enhanced_gender_country_df[enhanced_gender_country_df$subject==subject,], 
          aes(x = gdp_percap, y = score, color=gender, size=10)) +
         geom_point() +
         scale_color_manual(values = c(FEMALE_COLOR, MALE_COLOR)) +
-        scale_y_continuous(breaks = custom_yticks, labels = custom_ylabels) +
         labs(x=NULL, y=NULL, title = SUBJECT_NAME_LIST[i], color=NULL) +
         theme_minimal() +
-        theme(legend.text = element_text(size = 10),   
-              legend.key.size = unit(1.5, "cm")) +
+        theme(legend.key.size = unit(1, "cm")) +
         guides(color = guide_legend(override.aes = list(size = 10)), size = "none")  
   
   plot_list[[subject]] <- p
