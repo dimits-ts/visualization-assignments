@@ -29,6 +29,10 @@ CONTINENT_COLORS =  c("Asia" = "orange", "Europe" = "blue", "Africa" = "red", "A
 SUBJECT_NAME_LIST <- c("Mathematics", "Reading", "Science", "GLCM")
 TITLE_SIZE = 15
 
+# universal graphical parameters
+theme_title = theme(plot.title=element_text(lineheight=1.5, face="bold", hjust=0.5))
+title_text_grob_par = gpar(col = "black", fontsize = 20)
+
 # Import pisa data
 load("data/pisa2018.Rdata")
 
@@ -94,7 +98,7 @@ for (subject in unique(greece_global_df$subject)) {
 grid_plot <- grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
-             top=textGrob("Greek vs global scores", gp=gpar(fontsize=20,font=3)),
+             top=textGrob("Greek vs global scores", gp=title_text_grob_par),
              bottom=textGrob("Average Score"),
              left="Density")
 ggsave(filename=filepath_png("greek_global"), plot=grid_plot)
@@ -103,7 +107,7 @@ ggsave(filename=filepath_png("greek_global"), plot=grid_plot)
 # ======== Greece compared to continents ======== 
 
 # Note: GLCM data do not exist for Oceania
-# Note: Remove Africa since it is represented by only one country
+# Note: Removed Africa since it is represented by only one country
 avg_scores <- df[df$continent != "Africa",] %>%
   group_by(continent) %>%
   summarise(
@@ -128,12 +132,13 @@ avg_scores_long <- avg_scores %>%
 
 ggplot(avg_scores_long, aes(x = Continent, y = average_score, fill = subject)) +
   geom_bar(stat = "identity", position = "dodge", color = "black", width = 0.7) +
-  labs(title = "Greece Scores compared to Continents",
+  labs(title = "Greek vs Continent-wide scores",
        x = "Greece/Continent",
        y = "Average Score",
        fill = "Subject") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_title
 
 ggsave(filename=filepath_png("greece_continents"))
 
@@ -158,25 +163,18 @@ avg_country_scores$iso_code <- countrycode(sourcevar = avg_country_scores$countr
 
 # Merge map data with average scores data
 # Merge while retaining polygon order to prevent map from having aneurism
-# TODO: Overlay map for unknown countries?
 Total <- world_map[world_map$iso_code %in% avg_country_scores$iso_code, ]
 Total$avg_score <- avg_country_scores$avg_score[match(Total$iso_code, avg_country_scores$iso_code)]
 
 ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) + 
+  ggtitle("Average scores on all tests by country") +
   geom_polygon(colour = "white") +
   scale_fill_gradient(low = "black", high = "lightgreen", na.value = "grey") +
   expand_limits(x = world_map$long, y = world_map$lat) +
   labs(fill="Average score (4 tests)") +
-  theme_minimal() +
-  theme(panel.border = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.line = element_blank(),
-        axis.text = element_blank(),
-        axis.title = element_blank(),
-        legend.title = element_blank(),
-        legend.position = "right") +
-  theme_void()
+  theme_void() +
+  theme(legend.position = c(0.6, 0.4)) +
+  theme_title
 
 ggsave(filename=filepath_png("avg_scores_world"))
 
@@ -226,7 +224,7 @@ for (subject in unique(eu_avg_df_long$subject)) {
 grid_plot <- grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
-             top=textGrob("European Average Scores", gp=gpar(fontsize=20,font=3)),
+             top=textGrob("European Average Scores", gp=title_text_grob_par),
              bottom=textGrob("Average Score"))
 
 ggsave(filename=filepath_png("avg_eu"), plot=grid_plot)
@@ -247,13 +245,14 @@ ggplot(enhanced_avg_scores_df, aes(x=gdp_percap, y=avg_score, size=population, c
   scale_size(range = c(2, 20), guide=F) +
   labs(x = "GDP per Capita (U.S. $ 2024)",
        y = "Average Score (all tests)", 
-       #title="Average Scores by GDP per capita and population",
+       title="Average Scores by GDP per capita and population",
        color="Continent") +
   theme_minimal() +
   theme(axis.title=element_text(size=TITLE_SIZE),
         legend.title = element_text(size = TITLE_SIZE),  
         legend.text = element_text(size = TITLE_SIZE),   
         legend.key.size = unit(1.5, "cm")) +
+  theme_title +
   guides(color = guide_legend(override.aes = list(size = 10)))  
 
 ggsave(filename=filepath_png("avg_bubble"))
@@ -286,7 +285,7 @@ for (subject in unique(gender_grades_df$subject)) {
 grid_plot <- grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
-             top=textGrob("Global scores by gender", gp=gpar(fontsize=20,font=3)),
+             top=textGrob("Global scores by gender", gp=title_text_grob_par),
              bottom=textGrob("Average Score"),
              left="Density")
 
@@ -325,30 +324,22 @@ gender_country_perc_df$iso_code <- countrycode(sourcevar = gender_country_perc_d
 
 # Merge map data with average scores data
 # Merge while retaining polygon order to prevent map from having aneurism
-# TODO: Overlay map for unknown countries?
 Total <- world_map[world_map$iso_code %in% avg_country_scores$iso_code, ]
 Total$avg_score <- gender_country_perc_df$female_to_male_perc[
                       match(Total$iso_code, gender_country_perc_df$iso_code)]
 
 ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) + 
+  ggtitle("Difference between female (yellow) \nand male (brown) test scores") +
   geom_polygon(colour = "white") +
     scale_fill_gradient2(high = FEMALE_COLOR,
                          low = MALE_COLOR,
                          mid="lightgrey",
                          na.value = "grey") +
   expand_limits(x = world_map$long, y = world_map$lat) +
-  labs(title="Difference between female (yellow) and male (brown) test scores",
-       fill="Female/Male score diff (%)") +
-  theme_minimal() +
-  theme(panel.border = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.line = element_blank(),
-        axis.text = element_blank(),
-        axis.title = element_blank(),
-        legend.title = element_blank(),
-        legend.position = "right") +
-  theme_void()
+  labs(fill="Female/Male score diff (%)") +
+  theme_void() +
+  theme(legend.position = c(0.6, 0.4)) +
+  theme_title
 
 ggsave(filename=filepath_png("gender_world_map"))
 
@@ -411,7 +402,8 @@ ggplot(gender_continent_perc_df_long, aes(x = Continent, y = average_score, fill
        fill = "Subject") +
   scale_y_continuous(breaks = custom_yticks, labels = custom_ylabels) +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_title
 
 ggsave(filename=filepath_png("gender_continents"))
 
@@ -430,7 +422,7 @@ ggplot(enhanced_gender_country_perc_df, aes(x=gdp_percap, y=female_to_male_perc,
             show.legend = F) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
   annotate("text", y = 0.05, x = max(enhanced_gender_country_perc_df$gdp_percap)*4/5,
-           label = "Gender Equality", color = "red", size = 4, fontface = "bold")  +
+           label = "Perfect Gender Equality", color = "red", size = 4, fontface = "bold")  +
   scale_color_manual(values=CONTINENT_COLORS) +
   scale_size(range = c(2, 20), guide=F) +
   labs(x = "GDP per Capita (U.S. $ 2024)",
@@ -443,6 +435,7 @@ ggplot(enhanced_gender_country_perc_df, aes(x=gdp_percap, y=female_to_male_perc,
         legend.title = element_text(size = TITLE_SIZE),  
         legend.text = element_text(size = TITLE_SIZE), 
         legend.key.size = unit(1.5, "cm")) +
+  theme_title +
   guides(color = guide_legend(override.aes = list(size = 10)))  
 
 ggsave(filename=filepath_png("gender_bubble"))
@@ -482,7 +475,7 @@ for (subject in unique(enhanced_gender_country_df$subject)) {
 grid_plot <- grid.arrange(grobs = plot_list, 
              ncol = 2, 
              nrow = 2, 
-             top=textGrob("Country average scores by gender and GDP per capita"),
+             top=textGrob("Country average scores by gender and GDP per capita", gp=title_text_grob_par),
              bottom=textGrob("GDP per Capita (U.S. $ 2024)"),
              left="Average Score")
 
