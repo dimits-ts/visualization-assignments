@@ -304,7 +304,7 @@ gender_country_df <- overall_df %>%
   )
 
 # Calculate the total scores for each country and gender
-gender_country_perc_df <- gender_country_df %>%
+gender_country_diff_df <- gender_country_df %>%
   group_by(country, gender) %>%
   summarize(total_math = sum(avg_math, na.rm = TRUE),
             total_reading = sum(avg_reading, na.rm = TRUE),
@@ -314,19 +314,19 @@ gender_country_perc_df <- gender_country_df %>%
   group_by(country) %>%
   mutate(female_total = sum(ifelse(gender == "Female", total_math + total_reading + total_science + total_glcm, 0), na.rm = TRUE),
          male_total = sum(ifelse(gender == "Male", total_math + total_reading + total_science + total_glcm, 0), na.rm = TRUE)) %>%
-  summarise(female_to_male_perc = (female_total / (female_total + male_total) - 0.5) * 100)
+  summarise(fem_male_diff = female_total -male_total)
 # remove duplicates
-gender_country_perc_df <- gender_country_perc_df[seq(1, nrow(gender_country_perc_df), 2), ]
+gender_country_diff_df <- gender_country_diff_df[seq(1, nrow(gender_country_diff_df), 2), ]
 
-gender_country_perc_df$iso_code <- countrycode(sourcevar = gender_country_perc_df$country,
+gender_country_diff_df$iso_code <- countrycode(sourcevar = gender_country_diff_df$country,
                                            origin = "country.name",
                                            destination = "iso3c")
 
 # Merge map data with average scores data
 # Merge while retaining polygon order to prevent map from having aneurism
 Total <- world_map[world_map$iso_code %in% avg_country_scores$iso_code, ]
-Total$avg_score <- gender_country_perc_df$female_to_male_perc[
-                      match(Total$iso_code, gender_country_perc_df$iso_code)]
+Total$avg_score <- gender_country_diff_df$fem_male_diff[
+                      match(Total$iso_code, gender_country_diff_df$iso_code)]
 
 ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) + 
   ggtitle("Difference between female (yellow) \nand male (brown) test scores") +
@@ -336,7 +336,7 @@ ggplot(Total, aes(x=long, y=lat, group = group, fill = avg_score)) +
                          mid="lightgrey",
                          na.value = "grey") +
   expand_limits(x = world_map$long, y = world_map$lat) +
-  labs(fill="Female/Male score diff (%)") +
+  labs(fill="Female/Male score diff") +
   theme_void() +
   theme(legend.position = c(0.6, 0.4)) +
   theme_title
@@ -361,7 +361,7 @@ gender_continent_df <- overall_df %>%
 gender_continent_df <- gender_continent_df[!is.na(gender_continent_df$gender),] 
 
 # Calculate the total scores for each country and gender
-gender_continent_perc_df <- gender_continent_df %>%
+gender_continent_diff_df <- gender_continent_df %>%
   group_by(continent, gender) %>%
   summarize(total_math = sum(avg_math, na.rm = TRUE),
             total_reading = sum(avg_reading, na.rm = TRUE),
@@ -377,28 +377,27 @@ gender_continent_perc_df <- gender_continent_df %>%
          male_reading = sum(ifelse(gender == "Male", total_reading, 0), na.rm = TRUE),
          fem_glcm = sum(ifelse(gender == "Female", total_glcm, 0), na.rm = TRUE),
          male_glcm = sum(ifelse(gender == "Male", total_glcm, 0), na.rm = TRUE)) %>%
-  summarise(math_perc = (fem_math / (fem_math + male_math)-0.5) * 100,
-            science_perc = (fem_science / (fem_science + male_science)-0.5) * 100,
-            reading_perc = (fem_reading / (fem_reading + male_reading)-0.5) * 100,
-            glcm_perc = (fem_glcm / (fem_glcm + male_glcm)-0.5) * 100)
+  summarise(math_perc = fem_math - male_math,
+            science_perc = fem_science - male_math,
+            reading_perc = fem_reading - male_reading,
+            glcm_perc = fem_glcm -male_glcm)
 # remove duplicates
-gender_continent_perc_df <- gender_continent_perc_df[seq(1, nrow(gender_country_perc_df), 2), ]
-gender_continent_perc_df <- gender_continent_perc_df[1:5,]
+gender_continent_diff_df <- gender_continent_diff_df[seq(1, nrow(gender_country_diff_df), 2), ]
+gender_continent_diff_df <- gender_continent_diff_df[1:5,]
 
-names(gender_continent_perc_df) <- c("Continent", "Mathematics", "Reading", "Science", "GLCM")
+names(gender_continent_diff_df) <- c("Continent", "Mathematics", "Reading", "Science", "GLCM")
 
-gender_continent_perc_df_long <- gender_continent_perc_df %>%
+gender_continent_diff_df_long <- gender_continent_diff_df %>%
                                       pivot_longer(cols = c(Mathematics, Reading, Science, GLCM),
                                                    names_to = "subject",
                                                    values_to = "average_score")
 
-custom_yticks <- seq(-1, 2, by = 0.5) 
-custom_ylabels <- paste(custom_yticks, "%", sep = "")  # Convert tick positions to labels with percentage symbol
-ggplot(gender_continent_perc_df_long, aes(x = Continent, y = average_score, fill = subject)) +
+custom_ylabels <- seq(-1, 2, by = 0.5)
+ggplot(gender_continent_diff_df_long, aes(x = Continent, y = average_score, fill = subject)) +
   geom_bar(stat = "identity", position = "dodge", color = "black", width = 0.7) +
   labs(title = "Difference between female (top) and male (bottom) test scores",
        x = "Continent",
-       y = "Score Difference Ratio (%)",
+       y = "Average Female to Male Difference",
        fill = "Subject") +
   scale_y_continuous(breaks = custom_yticks, labels = custom_ylabels) +
   theme_minimal() +
@@ -410,23 +409,23 @@ ggsave(filename=filepath_png("gender_continents"))
 
 
 # ======== Pop, GDP, M/F diff plot ======== 
-enhanced_gender_country_perc_df <- merge(gender_country_perc_df, extra_data_df, by="iso_code")
+enhanced_gender_country_diff_df <- merge(gender_country_diff_df, extra_data_df, by="iso_code")
 
-ggplot(enhanced_gender_country_perc_df, aes(x=gdp_percap, y=female_to_male_perc, size=population, color=continent)) +
-  geom_point(data = enhanced_gender_country_perc_df, alpha = 0.6) +
-  geom_text(data = subset(enhanced_gender_country_perc_df, country == "Greece"),
+ggplot(enhanced_gender_country_diff_df, aes(x=gdp_percap, y=fem_male_diff, size=population, color=continent)) +
+  geom_point(data = enhanced_gender_country_diff_df, alpha = 0.6) +
+  geom_text(data = subset(enhanced_gender_country_diff_df, country == "Greece"),
             aes(label = "Greece"),
             nudge_y=0.1,
             size = 4, 
             fontface = "bold",
             show.legend = F) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
-  annotate("text", y = 0.05, x = max(enhanced_gender_country_perc_df$gdp_percap)*4/5,
+  annotate("text", y = 3.5, x = max(enhanced_gender_country_diff_df$gdp_percap)*4/5,
            label = "Perfect Gender Equality", color = "red", size = 4, fontface = "bold")  +
   scale_color_manual(values=CONTINENT_COLORS) +
   scale_size(range = c(2, 20), guide=F) +
   labs(x = "GDP per Capita (U.S. $ 2024)",
-       y = "Female/Male score diff (%)", 
+       y = "Female/Male score diff", 
        title="Gender gap in average scores (Higher: Female-dominated scores)",
        color="Continent") +
   theme_minimal() +
