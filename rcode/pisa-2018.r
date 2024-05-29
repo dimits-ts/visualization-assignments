@@ -27,11 +27,11 @@ MALE_COLOR = "#964B00"
 CONTINENT_COLORS =  c("Asia" = "orange", "Europe" = "blue", "Africa" = "red", "Americas" = "purple", "Oceania"= "green", "red"= "red")
 
 SUBJECT_NAME_LIST <- c("Mathematics", "Reading", "Science", "GLCM")
-TITLE_SIZE = 15
+TITLE_SIZE = 25
 
 # universal graphical parameters
-theme_title = theme(plot.title=element_text(lineheight=1.5, face="bold", hjust=0.5))
-title_text_grob_par = gpar(col = "black", fontsize = 30)
+theme_title = theme(plot.title=element_text(lineheight=1.5, face="bold", hjust=0.5, size=20))
+title_text_grob_par = gpar(col = "black", fontsize = 25)
 
 # Import pisa data
 load("../data/pisa2018.Rdata")
@@ -137,7 +137,7 @@ ggplot(avg_scores_long, aes(x = Continent, y = average_score, fill = subject)) +
        y = "Average Score",
        fill = "Subject") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=15)) +
   theme_title
 
 ggsave(filename=filepath_png("greece_continents"))
@@ -350,7 +350,8 @@ sum(df$country=="Saudi Arabia" & df$gender=="Male")
 
 # ======== Continents F/M divergence ======== 
 
-gender_continent_df <- overall_df %>%
+# exclude africa (1 datapoint)
+gender_continent_df <- overall_df[overall_df$continent != "Africa",] %>%
   group_by(continent, gender) %>%
   summarise(
     avg_math = mean(math, na.rm=T),
@@ -388,20 +389,18 @@ gender_continent_diff_df <- gender_continent_diff_df[1:5,]
 names(gender_continent_diff_df) <- c("Continent", "Mathematics", "Reading", "Science", "GLCM")
 
 gender_continent_diff_df_long <- gender_continent_diff_df %>%
-                                      pivot_longer(cols = c(Mathematics, Reading, Science, GLCM),
-                                                   names_to = "subject",
-                                                   values_to = "average_score")
+  pivot_longer(cols = c(Mathematics, Reading, Science, GLCM),
+               names_to = "subject",
+               values_to = "average_score")
 
-custom_ylabels <- seq(-1, 2, by = 0.5)
-ggplot(gender_continent_diff_df_long, aes(x = Continent, y = average_score, fill = subject)) +
+ggplot(na.omit(gender_continent_diff_df_long), aes(x = Continent, y = average_score, fill = subject)) +
   geom_bar(stat = "identity", position = "dodge", color = "black", width = 0.7) +
   labs(title = "Difference between female (top) and male (bottom) test scores",
        x = "Continent",
        y = "Average Female to Male Difference",
        fill = "Subject") +
-  scale_y_continuous(breaks = custom_yticks, labels = custom_ylabels) +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 15)) +
   theme_title
 
 ggsave(filename=filepath_png("gender_continents"))
