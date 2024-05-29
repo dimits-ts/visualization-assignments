@@ -31,10 +31,10 @@ TITLE_SIZE = 15
 
 # universal graphical parameters
 theme_title = theme(plot.title=element_text(lineheight=1.5, face="bold", hjust=0.5))
-title_text_grob_par = gpar(col = "black", fontsize = 20)
+title_text_grob_par = gpar(col = "black", fontsize = 30)
 
 # Import pisa data
-load("data/pisa2018.Rdata")
+load("../data/pisa2018.Rdata")
 
 # select and rename columns
 df = subset(newdata, select=c("CNT", "MATH", "READ", "SCIE", "GLCM", "ST004D01T"))
@@ -59,10 +59,10 @@ any(is.na(df$continent))
 # https://data.worldbank.org/indicator/NY.GDP.PCAP.CD?end=2018&start=2018
 # https://data.worldbank.org/indicator/SP.POP.TOTL?end=
 
-pop_df <- read.csv("data/pops.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
+pop_df <- read.csv("../data/pops.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
 names(pop_df) <- c("iso_code", "population")
 
-gdp_percap_df <- read.csv("data/gdp_percap.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
+gdp_percap_df <- read.csv("../data/gdp_percap.csv", header=TRUE, skip=4)[,c("Country.Code", "X2018")]
 names(gdp_percap_df) <- c("iso_code", "gdp_percap")
 
 extra_data_df <- merge(pop_df, gdp_percap_df, by="iso_code")
